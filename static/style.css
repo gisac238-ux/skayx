@@ -1,0 +1,459 @@
+/* ═══════════════════════════════════════
+   SKAYX — Dark Theme (cinza escuro + preto)
+   Inspiração: Google AI / Gemini
+   ═══════════════════════════════════════ */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    --bg-primary: #0d0d0d;
+    --bg-secondary: #1a1a1a;
+    --bg-tertiary: #252525;
+    --bg-input: #2a2a2a;
+    --text-primary: #e8e8e8;
+    --text-secondary: #9a9a9a;
+    --accent: #7c7cff;
+    --accent-hover: #9d9dff;
+    --border: #333333;
+    --msg-user: #2a2a3a;
+    --msg-bot: #1a1a1a;
+    --success: #4ade80;
+    --error: #ef4444;
+    --warning: #f59e0b;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 0 16px;
+}
+
+/* ─── Header ─── */
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.logo-icon {
+    font-size: 24px;
+}
+
+.logo-text {
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    -webkit-background-clip: text;
+background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.btn-registrar {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+}
+
+.btn-registrar:hover {
+    background: var(--bg-input);
+    border-color: var(--accent);
+}
+
+/* ─── Painel Registro ─── */
+.painel-registro {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+}
+
+.painel-registro.oculto {
+    display: none;
+}
+
+.painel-registro input,
+.painel-registro select {
+    flex: 1;
+    min-width: 100px;
+    padding: 8px 12px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.painel-registro button {
+    padding: 8px 20px;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+/* ─── Chat Area ─── */
+main {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px 0;
+    scroll-behavior: smooth;
+}
+
+main::-webkit-scrollbar {
+    width: 6px;
+}
+
+main::-webkit-scrollbar-thumb {
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+}
+
+/* ─── Bem-vindo ─── */
+.bem-vindo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    text-align: center;
+    padding: 40px 0;
+}
+
+.bem-vindo-icon {
+    font-size: 64px;
+    margin-bottom: 16px;
+}
+
+.bem-vindo h1 {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    -webkit-background-clip: text;
+background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.bem-vindo p {
+    color: var(--text-secondary);
+    font-size: 16px;
+    margin-bottom: 32px;
+}
+
+.sugestoes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    max-width: 500px;
+}
+
+.sugestoes button {
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+}
+
+.sugestoes button:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent);
+}
+
+/* ─── Mensagens ─── */
+.msg {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    margin: 8px 0;
+    font-size: 15px;
+    line-height: 1.6;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+.msg.user {
+    background: var(--msg-user);
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+}
+
+.msg.bot {
+    background: var(--msg-bot);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+}
+
+.msg.loading {
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* ─── Footer / Input ─── */
+footer {
+    padding: 16px 0;
+    border-top: 1px solid var(--border);
+}
+
+.input-wrapper {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 6px 6px 6px 20px;
+    transition: border-color 0.2s;
+}
+
+.input-wrapper:focus-within {
+    border-color: var(--accent);
+}
+
+.input-wrapper input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    font-size: 15px;
+    outline: none;
+}
+
+.input-wrapper input::placeholder {
+    color: var(--text-secondary);
+}
+
+.input-wrapper button {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.input-wrapper button:hover {
+    background: var(--accent-hover);
+}
+
+.aviso {
+    text-align: center;
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 10px;
+}
+
+/* ─── Responsivo ─── */
+@media (max-width: 600px) {
+    .sugestoes {
+        grid-template-columns: 1fr;
+    }
+    .msg {
+        max-width: 95%;
+    }
+}   
+/* ─── Contador ─── */
+#contador {
+    font-size: 12px;
+    color: var(--text-secondary);
+    text-align: right;
+    padding: 4px 0;
+}
+
+/* ─── Modal Premium ─── */
+.modal {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.modal.oculto {
+    display: none;
+}
+
+.modal-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 32px;
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+}
+
+.modal-content h2 {
+    font-size: 24px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, var(--accent), #a78bfa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.modal-desc {
+    color: var(--text-secondary);
+    margin-bottom: 24px;
+    font-size: 14px;
+}
+
+.modal-precos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.plano {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: left;
+}
+
+.plano.destaque {
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(124, 124, 255, 0.1);
+}
+
+.plano h3 {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+}
+
+.preco {
+    font-size: 24px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.preco span {
+    font-size: 14px;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.plano ul {
+    list-style: none;
+    padding: 0;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.plano ul li {
+    padding: 3px 0;
+}
+
+.plano ul li::before {
+    content: "✓ ";
+    color: var(--success);
+}
+
+.btn-comprar {
+    display: block;
+    margin-top: 12px;
+    padding: 10px;
+    background: var(--accent);
+    color: #fff;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.btn-comprar:hover {
+    background: var(--accent-hover);
+}
+
+.modal-chave {
+    margin-bottom: 16px;
+}
+
+.modal-chave p {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+}
+
+.input-chave {
+    display: flex;
+    gap: 8px;
+}
+
+.input-chave input {
+    flex: 1;
+    padding: 10px;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    font-size: 13px;
+}
+
+.input-chave button {
+    padding: 10px 16px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-primary);
+    cursor: pointer;
+}
+
+.btn-fechar {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 13px;
+    text-decoration: underline;
+}   

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkayX — IA Financeira</title>
+    <meta name="description" content="SkayX: assistente de IA para controle de gastos, negócios e segurança bancária.">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<!-- Modal Premium -->
+<div id="modal-premium" class="modal oculto">
+    <div class="modal-content">
+        <h2>⚡ SkayX Pro</h2>
+        <p class="modal-desc">Desbloqueie uso ilimitado, relatórios avançados e análise de negócios.</p>
+        
+        <div class="modal-precos">
+            <div class="plano">
+                <h3>Free</h3>
+                <p class="preco">R$ 0</p>
+                <ul>
+                    <li>20 mensagens/dia</li>
+                    <li>Chat básico</li>
+                    <li>Registro de gastos</li>
+                </ul>
+            </div>
+            <div class="plano destaque">
+                <h3>Pro</h3>
+                <p class="preco">9,99 €<span>/mês</span></p>
+                <ul>
+                    <li>Mensagens ilimitadas</li>
+                    <li>Relatórios avançados</li>
+                    <li>Análise de negócios</li>
+                    <li>Suporte prioritário</li>
+                </ul>
+                <a href="https://www.paypal.com/paypalme/SEU_USUARIO/9.99/EUR" 
+                   target="_blank" class="btn-comprar">Assinar agora</a>
+            </div>
+        </div>
+
+        <div class="modal-chave">
+            <p>Já comprou? Ative com sua chave:</p>
+            <div class="input-chave">
+                <input type="text" id="input-chave" placeholder="Cole sua chave premium">
+                <button onclick="ativarPremium()">Ativar</button>
+            </div>
+        </div>
+
+        <button class="btn-fechar" onclick="fecharModal()">Continuar no plano Free</button>
+    </div>
+</div>   
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header>
+            <div class="logo">
+                <span class="logo-icon">🏦</span>
+                <span class="logo-text">SkayX</span>
+            </div>
+            <button class="btn-registrar" onclick="toggleRegistrar()">+ Registrar Gasto</button>
+        </header>
+
+        <!-- Painel de Registro (oculto por padrão) -->
+        <div id="painel-registro" class="painel-registro oculto">
+            <input type="text" id="reg-desc" placeholder="Descrição (ex: Mercado)">
+            <input type="number" id="reg-valor" placeholder="R$" step="0.01" min="0">
+            <select id="reg-cat">
+                <option>Alimentação</option>
+                <option>Moradia</option>
+                <option>Transporte</option>
+                <option>Saúde</option>
+                <option>Lazer</option>
+                <option>Negócio</option>
+                <option>Outros</option>
+            </select>
+            <select id="reg-tipo">
+                <option value="saida">Saída</option>
+                <option value="entrada">Entrada</option>
+            </select>
+            <button onclick="registrarGasto()">Salvar</button>
+        </div>
+
+        <!-- Área de Chat -->
+        <main id="chat-area">
+            <div class="bem-vindo">
+                <div class="bem-vindo-icon">🏦</div>
+                <h1>SkayX</h1>
+                <p>Seu assistente de finanças, negócios e segurança bancária.</p>
+                <div class="sugestoes">
+                    <button onclick="enviarSugestao('Quanto gastei este mês?')">Quanto gastei este mês?</button>
+                    <button onclick="enviarSugestao('Meu banco ligou pedindo meu CVV, é golpe?')">Meu banco ligou pedindo CVV</button>
+                    <button onclick="enviarSugestao('Dê dicas para controlar meu pequeno negócio')">Dicas para meu negócio</button>
+                    <button onclick="enviarSugestao('Crie um plano para organizar minhas finanças')">Plano de organização</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Input -->
+        <footer>
+            <div class="input-wrapper">
+                <input type="text" id="input-msg" placeholder="Pergunte algo ao SkayX..." autofocus>
+                <button id="btn-enviar" onclick="enviar()">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                    </svg>
+                </button>
+            </div>
+            <p id="contador">20 restantes</p>   
+            <p class="aviso">SkayX pode cometer erros. Não é aconselhamento financeiro profissional.</p>
+        </footer>
+    </div>
+
+    <script>
+    const sessionId = 'skayx-' + Date.now() + '-' + Math.random().toString(36).substr(2);
+    let premiumKey = '';
+    const chatArea = document.getElementById('chat-area');
+    const inputMsg = document.getElementById('input-msg');
+
+    inputMsg.addEventListener('keypress', (e) => { if (e.key === 'Enter') enviar(); });
+
+    function toggleRegistrar() {
+        document.getElementById('painel-registro').classList.toggle('oculto');
+    }
+
+    async function registrarGasto() {
+        const desc = document.getElementById('reg-desc').value;
+        const valor = document.getElementById('reg-valor').value;
+        const cat = document.getElementById('reg-cat').value;
+        const tipo = document.getElementById('reg-tipo').value;
+        if (!desc || !valor) return alert('Preencha descrição e valor.');
+        const res = await fetch('/api/registrar', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({descricao: desc, valor: parseFloat(valor), categoria: cat, tipo})
+        });
+        const data = await res.json();
+        adicionarMsg(data.msg, 'bot');
+        document.getElementById('painel-registro').classList.add('oculto');
+        document.getElementById('reg-desc').value = '';
+        document.getElementById('reg-valor').value = '';
+    }
+
+    function enviarSugestao(texto) {
+        inputMsg.value = texto;
+        enviar();
+    }
+
+    function adicionarMsg(texto, tipo) {
+        const bv = document.querySelector('.bem-vindo');
+        if (bv) bv.remove();
+        const div = document.createElement('div');
+        div.className = `msg ${tipo}`;
+        div.textContent = texto;
+        chatArea.appendChild(div);
+        chatArea.scrollTop = chatArea.scrollHeight;
+        return div;
+    }
+
+    function mostrarModalPremium() {
+        const modal = document.getElementById('modal-premium');
+        modal.classList.remove('oculto');
+    }
+
+    function fecharModal() {
+        document.getElementById('modal-premium').classList.add('oculto');
+    }
+
+    async function ativarPremium() {
+        const key = document.getElementById('input-chave').value.trim();
+        if (!key) return;
+        const res = await fetch('/api/ativar-premium', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({key, session_id: sessionId})
+        });
+        const data = await res.json();
+        if (data.ok) {
+            premiumKey = key;
+            alert(data.msg);
+            fecharModal();
+        } else {
+            alert(data.msg);
+        }
+    }
+
+    async function enviar() {
+        const msg = inputMsg.value.trim();
+        if (!msg) return;
+        inputMsg.value = '';
+        adicionarMsg(msg, 'user');
+
+        const divLoading = adicionarMsg('Pensando...', 'bot');
+        divLoading.classList.add('loading');
+
+        try {
+            const res = await fetch('/api/chat', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({message: msg, session_id: sessionId, premium_key: premiumKey})
+            });
+            const data = await res.json();
+
+            if (data.limite_esgotado) {
+                divLoading.textContent = data.msg;
+                divLoading.classList.remove('loading');
+                mostrarModalPremium();
+            } else {
+                divLoading.textContent = data.response;
+                divLoading.classList.remove('loading');
+                // Atualizar contador
+                const counter = document.getElementById('contador');
+                if (counter && data.restantes !== undefined) {
+                    counter.textContent = data.premium ? '∞ Pro' : `${data.restantes} restantes`;
+                }
+            }
+        } catch (e) {
+            divLoading.textContent = '❌ Erro de conexão: ' + e;
+            divLoading.classList.remove('loading');
+        }
+        chatArea.scrollTop = chatArea.scrollHeight;
+    }
+</script>   
+</body>
+</html>   

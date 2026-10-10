@@ -281,6 +281,19 @@ def gerar_chave():
     ).hexdigest()
     ativar_chave(chave)
     return jsonify({"chave": chave, "validade": "30 dias"})
-
+@app.route("/gerar-chave")
+def gerar_chave_page():
+    chave = hashlib.sha256(
+        f"{datetime.now().isoformat()}_{random.random()}_{os.urandom(8).hex()}".encode()
+    ).hexdigest()
+    ativar_chave(chave)
+    return f"""
+    <html><body style="background:#0d0d0d;color:#e8e8e8;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;">
+        <h1>🔑 Chave SkayX Pro</h1>
+        <p>Copie e envie ao cliente:</p>
+        <pre style="font-size:18px;background:#1a1a1a;color:#4ade80;padding:20px 30px;border-radius:12px;cursor:pointer;border:1px solid #333;" onclick="navigator.clipboard.writeText('{chave}');this.style.color='#f59e0b';this.textContent='✅ Copiado!'">{chave}</pre>
+        <p style="color:#9a9a9a;font-size:13px;margin-top:12px;">Clique na chave para copiar. Validade: 30 dias.</p>
+    </body></html>
+    """   
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)   

@@ -315,7 +315,7 @@ def ativar_premium():
     dados = request.json
     key = dados.get("key", "").strip()
 
-    if not key or len(key) != 32:
+    if not key or len(key) != 64:   
         return jsonify({"ok": False, "msg": "❌ Chave inválida."})
 
     conn = get_db()

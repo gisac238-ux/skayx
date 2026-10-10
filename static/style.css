@@ -620,3 +620,9 @@ footer {
     .modal-precos { grid-template-columns: 1fr; }
     .user-name { display: none; }
 }   
+.logo-img {
+    width: 32px;
+    height: 32px;
+    object-fit: contain;
+    border-radius: 6px;
+}   

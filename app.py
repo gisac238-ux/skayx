@@ -3,7 +3,8 @@ import json
 import time
 import random
 import hashlib
-from datetime import datetime, date
+import sqlite3
+from datetime import datetime, date, timedelta
 from flask import Flask, render_template, request, jsonify
 from dotenv import load_dotenv
 from google import genai
@@ -16,76 +17,11 @@ load_dotenv()
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
 # ═══════════════════════════════════════════
-# MODELO COM FALLBACK (resolve o 503)
+# CONFIG
 # ═══════════════════════════════════════════
 MODELS = ["gemini-3.5-flash-lite", "gemini-2.5-flash"]
-
-def chamar_gemini(contents, system_instruction):
-    """Tenta cada modelo em sequência até funcionar."""
-    for model in MODELS:
-        for tentativa in range(2):
-            try:
-                resposta = client.models.generate_content(
-                    model=model,
-                    contents=contents,
-                    config={
-                        "system_instruction": system_instruction,
-                        "temperature": 0.7,
-                        "max_output_tokens": 1024
-                    }
-                )
-                return resposta.text
-            except Exception as e:
-                if "503" in str(e) or "429" in str(e):
-                    if tentativa < 1:
-                        time.sleep(2 + random.uniform(0, 1))
-                        continue
-                    break  # tenta o próximo modelo
-                else:
-                    return f"❌ Erro: {str(e)}"
-    return "⏳ Todos os modelos estão ocupados. Tente novamente em 1 minuto."
-
-# ═══════════════════════════════════════════
-# SISTEMA DE PLANOS (Free / Premium)
-# ═══════════════════════════════════════════
-LIMITE_FREE_DIA = 20  # mensagens grátis por dia
-PREMIUM_KEYS = [
-    # Adicione as chaves dos usuários premium aqui
-    # ou gere automaticamente
-]
-
-# Contador por sessão (em memória)
-contadores = {}  # {session_id: {"data": "2026-10-09", "count": 5, "premium": False}}
-
-def verificar_limite(session_id, premium=False):
-    hoje = date.today().strftime("%Y-%m-%d")
-    
-    if session_id not in contadores:
-        contadores[session_id] = {"data": hoje, "count": 0, "premium": premium}
-    
-    # Resetar se mudou o dia
-    if contadores[session_id]["data"] != hoje:
-        contadores[session_id] = {"data": hoje, "count": 0, "premium": premium}
-    
-    if premium:
-        return True, 0, True
-    
-    contadores[session_id]["count"] += 1
-    restantes = LIMITE_FREE_DIA - contadores[session_id]["count"]
-    
-    if contadores[session_id]["count"] > LIMITE_FREE_DIA:
-        return False, 0, False
-    
-    return True, restantes, False
-
-def validar_premium_key(key):
-    """Verifica se a chave premium é válida."""
-    if key in PREMIUM_KEYS:
-        return True
-    # Chave premium = hash de 32 chars (gerada no checkout)
-    if len(key) == 32 and all(c in "0123456789abcdef" for c in key):
-        return True
-    return False
+LIMITE_FREE_DIA = 20
+DB_PATH = os.path.join(os.path.dirname(__file__), "data", "skayx.db")
 
 # ═══════════════════════════════════════════
 # SYSTEM PROMPT
@@ -104,13 +40,144 @@ REGRAS:
 - Se detectar possível golpe, alerte com urgência.
 """
 
+# ═══════════════════════════════════════════
+# GEMINI COM FALLBACK
+# ═══════════════════════════════════════════
+def chamar_gemini(contents, system_instruction):
+    for model in MODELS:
+        for tentativa in range(2):
+            try:
+                resposta = client.models.generate_content(
+                    model=model,
+                    contents=contents,
+                    config={
+                        "system_instruction": system_instruction,
+                        "temperature": 0.7,
+                        "max_output_tokens": 1024
+                    }
+                )
+                return resposta.text
+            except Exception as e:
+                if "503" in str(e) or "429" in str(e):
+                    if tentativa < 1:
+                        time.sleep(2 + random.uniform(0, 1))
+                        continue
+                    break
+                else:
+                    return f"❌ Erro: {str(e)}"
+    return "⏳ Todos os modelos estão ocupados. Tente novamente em 1 minuto."
+
+# ═══════════════════════════════════════════
+# CONTADOR PERSISTENTE (SQLite)
+# ═══════════════════════════════════════════
+def get_counter_db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS contadores (
+            session_id TEXT PRIMARY KEY,
+            data TEXT NOT NULL,
+            count INTEGER DEFAULT 0,
+            premium INTEGER DEFAULT 0
+        )
+    """)
+    conn.commit()
+    return conn
+
+def verificar_limite(session_id, premium=False):
+    conn = get_counter_db()
+    hoje = date.today().strftime("%Y-%m-%d")
+
+    row = conn.execute(
+        "SELECT data, count, premium FROM contadores WHERE session_id = ?",
+        (session_id,)
+    ).fetchone()
+
+    if row is None:
+        conn.execute(
+            "INSERT INTO contadores (session_id, data, count, premium) VALUES (?,?,?,?)",
+            (session_id, hoje, 1, 1 if premium else 0)
+        )
+        conn.commit()
+        conn.close()
+        return True, LIMITE_FREE_DIA - 1, premium
+
+    # Resetar se mudou o dia
+    if row[0] != hoje:
+        conn.execute(
+            "UPDATE contadores SET data=?, count=1, premium=? WHERE session_id=?",
+            (hoje, 1 if premium else 0, session_id)
+        )
+        conn.commit()
+        conn.close()
+        return True, LIMITE_FREE_DIA - 1, premium
+
+    # Premium = ilimitado
+    if row[2] == 1:
+        conn.close()
+        return True, 0, True
+
+    # Free = checar limite
+    if row[1] >= LIMITE_FREE_DIA:
+        conn.close()
+        return False, 0, False
+
+    conn.execute(
+        "UPDATE contadores SET count = count + 1 WHERE session_id = ?",
+        (session_id,)
+    )
+    conn.commit()
+    restantes = LIMITE_FREE_DIA - row[1] - 1
+    conn.close()
+    return True, restantes, False
+
+# ═══════════════════════════════════════════
+# CHAVE PREMIUM COM VALIDADE (30 dias)
+# ═══════════════════════════════════════════
+def get_premium_db():
+    os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS premium_keys (
+            chave TEXT PRIMARY KEY,
+            ativado_em TEXT NOT NULL,
+            expira_em TEXT NOT NULL
+        )
+    """)
+    conn.commit()
+    return conn
+
+def validar_premium_key(key):
+    if not key or len(key) != 32:
+        return False
+    conn = get_premium_db()
+    row = conn.execute(
+        "SELECT expira_em FROM premium_keys WHERE chave = ?", (key,)
+    ).fetchone()
+    conn.close()
+
+    if row is None:
+        return False
+
+    expira = datetime.strptime(row[0], "%Y-%m-%d %H:%M:%S")
+    return datetime.now() < expira
+
+def ativar_chave(key):
+    conn = get_premium_db()
+    agora = datetime.now()
+    expira = agora + timedelta(days=30)
+    conn.execute(
+        "INSERT OR REPLACE INTO premium_keys (chave, ativado_em, expira_em) VALUES (?,?,?)",
+        (key, agora.strftime("%Y-%m-%d %H:%M:%S"), expira.strftime("%Y-%m-%d %H:%M:%S"))
+    )
+    conn.commit()
+    conn.close()
+
+# ═══════════════════════════════════════════
+# APP FLASK
+# ═══════════════════════════════════════════
 app = Flask(__name__)
-
 sessoes = {}
-
-# ═══════════════════════════════════════════
-# ROTAS
-# ═══════════════════════════════════════════
 
 @app.route("/")
 def index():
@@ -123,14 +190,12 @@ def chat():
     session_id = dados.get("session_id", "default")
     premium_key = dados.get("premium_key", "")
 
-    # Verificar premium
+    # Verificar se é premium
     premium = validar_premium_key(premium_key) if premium_key else False
-    if session_id in contadores:
-        contadores[session_id]["premium"] = premium
 
     # Verificar limite
     permitido, restantes, is_premium = verificar_limite(session_id, premium)
-    
+
     if not permitido:
         return jsonify({
             "response": None,
@@ -138,7 +203,7 @@ def chat():
             "msg": f"🔒 Você atingiu o limite gratuito de {LIMITE_FREE_DIA} mensagens/dia. Assine o SkayX Pro para uso ilimitado."
         })
 
-    # Processar mensagem
+    # Histórico
     if session_id not in sessoes:
         sessoes[session_id] = []
     sessoes[session_id].append({"role": "user", "content": mensagem})
@@ -152,6 +217,7 @@ def chat():
         orc = verificar_orcamento()
         contexto_extra = f"\nDADOS REAIS:\nResumo: {json.dumps(resumo, ensure_ascii=False)}\nOrçamento: {orc}\n"
 
+    # Montar conteúdo
     conteudo = []
     for msg in sessoes[session_id]:
         role = "user" if msg["role"] == "user" else "model"
@@ -186,23 +252,35 @@ def resumo():
 @app.route("/api/ativar-premium", methods=["POST"])
 def ativar_premium():
     dados = request.json
-    key = dados.get("key", "")
+    key = dados.get("key", "").strip()
     session_id = dados.get("session_id", "default")
-    
-    if validar_premium_key(key):
-        if session_id not in contadores:
-            contadores[session_id] = {"data": date.today().strftime("%Y-%m-%d"), "count": 0, "premium": True}
-        contadores[session_id]["premium"] = True
-        return jsonify({"ok": True, "msg": "✅ SkayX Pro ativado!"})
-    return jsonify({"ok": False, "msg": "❌ Chave inválida."})
 
-@app.route("/api/gerar-chave-premium", methods=["POST"])
+    if not key or len(key) != 32:
+        return jsonify({"ok": False, "msg": "❌ Chave inválida."})
+
+    # Ativar a chave (30 dias)
+    ativar_chave(key)
+
+    # Marcar sessão como premium
+    conn = get_counter_db()
+    hoje = date.today().strftime("%Y-%m-%d")
+    conn.execute(
+        "INSERT OR REPLACE INTO contadores (session_id, data, count, premium) VALUES (?,?,?,1)",
+        (session_id, hoje, 0)
+    )
+    conn.commit()
+    conn.close()
+
+    return jsonify({"ok": True, "msg": "✅ SkayX Pro ativado por 30 dias!"})
+
+@app.route("/api/gerar-chave", methods=["POST"])
 def gerar_chave():
-    """Gerar chave premium (use após receber pagamento)."""
-    # Em produção, isto seria disparado pelo webhook do Paddle/PayPal
-    chave = hashlib.sha256(f"{datetime.now().isoformat()}_{random.random()}".encode()).hexdigest()
-    PREMIUM_KEYS.append(chave)
-    return jsonify({"chave": chave})
+    """Gerar chave premium (use após confirmar pagamento no Asaas)."""
+    chave = hashlib.sha256(
+        f"{datetime.now().isoformat()}_{random.random()}_{os.urandom(8).hex()}".encode()
+    ).hexdigest()
+    ativar_chave(chave)
+    return jsonify({"chave": chave, "validade": "30 dias"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080, debug=True)   

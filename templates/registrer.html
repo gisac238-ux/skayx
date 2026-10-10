@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkayX — Criar Conta</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="auth-page">
+    <div class="auth-container">
+        <div class="auth-logo">
+            <span class="logo-icon">🏦</span>
+            <span class="logo-text">Seu assistente de finanças inteligente</span>
+        </div>
+        <h1 class="auth-title">Crie sua conta</h1>
+        <p class="auth-subtitle">Grátis. Sem cartão de crédito.</p>
+
+        <form method="POST" class="auth-form">
+            <div class="form-group">
+                <label>Nome</label>
+                <input type="text" name="nome" placeholder="Seu nome" required>
+            </div>
+            <div class="form-group">
+                <label>E-mail</label>
+                <input type="email" name="email" placeholder="seu@email.com" required>
+            </div>
+            <div class="form-group">
+                <label>Senha</label>
+                <input type="password" name="password" placeholder="Mínimo 6 caracteres" minlength="6" required>
+            </div>
+            <button type="submit" class="btn-primary">Criar conta</button>
+        </form>
+
+        <p class="auth-switch">
+            Já tem conta? <a href="{{ url_for('login') }}">Entrar</a>
+        </p>
+    </div>
+</body>
+</html>   

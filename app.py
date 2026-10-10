@@ -15,7 +15,10 @@ from database import (
 )
 
 load_dotenv()
-client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    raise RuntimeError("GEMINI_API_KEY não configurada. Adicione nas Variables do Railway.")
+client = genai.Client(api_key=api_key)   
 
 # ═══════════════════════════════════════════
 # CONFIG
